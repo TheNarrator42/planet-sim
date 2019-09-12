@@ -6,32 +6,25 @@ import discord4j.core.`object`.entity.Member
 import discord4j.core.`object`.util.Snowflake
 import discord4j.core.event.domain.message.MessageCreateEvent
 import reactor.core.publisher.Mono
-import reactor.core.publisher.toMono
 import reactor.util.function.Tuple2
 import reactor.util.function.Tuple3
 import reactor.util.function.Tuple4
-import reactor.util.function.Tuples
 import java.awt.Color
 import java.io.File
 import java.util.*
 
 
-val commandsMap = mutableMapOf<DiscordClient,MutableList<Command>>()
-val DiscordClient.commands: MutableList<Command>
-    get(){
-        return if (commandsMap.containsKey(this)){
-            commandsMap[this]!!
-        }else{
-            commandsMap[this] = mutableListOf()
-            commandsMap[this]!!
-        }
-    }
 
 
-fun commands(client: DiscordClient, block: ManyCommandsBuilder.() -> Unit):Mono<Void>{
-    return ManyCommandsBuilder().apply(block).finish(client)
+val commands = mutableListOf<Command>()
+
+fun command(block: CommandBuilder.() -> Unit){
+    commands.add(CommandBuilder().apply(block).build())
 }
 
+private fun commandBuild(block: CommandBuilder.() -> Unit):Command{
+    return CommandBuilder().apply(block).build()
+}
 
 fun start(token :String, block : DiscordClientBuilder.() -> Unit = {}): DiscordClient{
     return DiscordClientBuilder(token).apply(block).build()
@@ -40,50 +33,34 @@ fun start(token : File, block :DiscordClientBuilder.() -> Unit = {}): DiscordCli
     return start(token.readText(Charsets.UTF_8),block)
 }
 
-
-const val HELP_OVERRIDE = "!!!help"
-
-
-
-//TODO fix this
-fun DiscordClient.applyCommands(commands :List<Command>):Mono<Void>{
-    return this.eventDispatcher
-        .on(MessageCreateEvent::class.java)
-        .filter { it.message.content.isPresent }
-        .map { Tuples.of(it,Config.prefix.getPrefixForGuild(it.guildId)) }
-        .filter { tuple -> tuple.t1.message.content.get().startsWith(tuple.t2) || tuple.t1.message.content.get() == HELP_OVERRIDE }
-        .map { (event,prefix) ->
-
-            val command = commands.firstOrNull { command ->
-                command.names.any { alias -> event.message.content.get().startsWith(prefix + alias) }
-            } ?: event.message.content.map<String?> { it }.orElse(null)?.run {
-                if(this == HELP_OVERRIDE || this == "${prefix}help") Config.defaultHelp.getFor(event) else null
-            }
-            Tuples.of(event,prefix,Optional.ofNullable(command))
-
+fun DiscordClient.runCommands(): Mono<Void> = this.eventDispatcher
+    .on(MessageCreateEvent::class.java)
+    .filter { it.message.content.isPresent }
+    .flatMap { Mono.justOrEmpty(it.message.content).filter { str -> str.startsWith("ps") }.map { w -> it to w } }
+    .filter { (_,content) -> content.startsWith("ps") }
+    .flatMap { (event,content) ->
+        val arguments = content.substring(Config.prefix.length).trim()
+        val commandName = arguments.substring(0,arguments.indexOf(' ').takeUnless { it == -1 } ?: arguments.length)
+        val command = when {
+            arguments.isBlank() -> // the person is clearly wrong and needs to be punished
+                commandBuild { execute { createMessage("Use `${Config.prefix} help` for help!") } }
+            arguments == "help" -> Config.defaultHelp //flagged first just to be sure.
+            else -> commands.firstOrNull { it.names.contains(arguments) } ?:
+            commandBuild { execute { createMessage("I can't find command `$commandName`. Use `ps help` for help") } }
         }
-        .filter { it.t3.isPresent }
-        .map { Tuples.of(it.t1,it.t2,it.t3.get()) }
-        .map { (event,prefix,command) ->
-            Tuples.of(event,prefix,command, getPermissionLevelForUser(event.member))
-        }
-        .flatMap { tuple ->
-            tuple.t4.map { four -> Tuples.of(tuple.t1,tuple.t2,tuple.t3,four) } }
-        .map { (event,prefix,command,permission) ->
-            Tuples.of(Context(
-                prefix = prefix,
-                permissionLevel = permission,
-                event = event,
-                nameUsed = command.names.first { alias -> event.message.content.get().startsWith(prefix + alias) }
-            ),command)
-        }.flatMap {(context,command) ->
-            (if (command.permission > context.permissionLevel) {
-                Config.badPermissionHandler.run(context, command)
-            } else {
-                command.run(context)
-            }).onErrorResume { e ->
+
+        val permissionLevel = getPermissionLevelForUser(event.member)
+        val context = Context(
+            prefix = "ps",
+            permissionLevel = getPermissionLevelForUser(event.member),
+            event = event,
+            nameUsed = commandName
+        )
+        if (permissionLevel < command.permission){
+            Config.badPermissionHandler.run(context,command)
+        } else {
+            command.run(context).onErrorResume { e ->
                 e.printStackTrace()
-
                 context.event.message.channel.flatMap { channel ->
                     channel.createEmbed { spec ->
                         spec.setColor(Color.RED)
@@ -93,25 +70,17 @@ fun DiscordClient.applyCommands(commands :List<Command>):Mono<Void>{
                 }.then()
             }
         }
-        .then()
-
-}
+    }.then()
 
 
-
-
-fun getPermissionLevelForUser(memberOp: Optional<Member>):Mono<PermissionLevel> {
-    return memberOp.map { member ->
-        member.isPlayer().toMono()// FIXME this can be a lot better
-            .flatMap { isPlayer -> Config.isMasterAdmin.isMasterAdmin(member).map { Tuples.of(isPlayer,it) } }
-            .map { (isPlayer, isMasterAdmin) ->
-                when {
-                    isMasterAdmin -> PermissionLevel.MASTER_ADMIN
-                    isPlayer -> PermissionLevel.PLAYER
-                    else -> PermissionLevel.ANY
-                }
-            }
-    }.orElse(Mono.just(PermissionLevel.ANY))
+fun getPermissionLevelForUser(memberOp: Optional<Member>):PermissionLevel {
+    return memberOp.map {
+        when {
+            Config.isMasterAdmin.isMasterAdmin(it) -> PermissionLevel.ADMIN
+            it.isPlayer() -> PermissionLevel.PLAYER
+            else -> PermissionLevel.ANY
+        }
+    }.orElse(PermissionLevel.ANY)
 }
 
 fun Member.isPlayer(): Boolean = this.roleIds.contains(Snowflake.of(620577477391155201))

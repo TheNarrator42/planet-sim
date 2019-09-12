@@ -3,8 +3,11 @@ package org.othercraft
 import org.othercraft.bot.*
 import java.io.File
 
+const val MENTION_ADMIN = "<@620577414287851530>"
+
 
 fun main() {
+
     config {
         this.help = NormalHelpPrinter()
         admin {
@@ -13,34 +16,20 @@ fun main() {
         }
         prefix = "ps "
         permission {  c, command ->
-            c.cache("Permission request denied")
-            c.cache("You used a command that needs level ${command.permission}")
-            c.cache("You only have permission level ${c.permissionLevel}")
-            c.flush().last().then()
+            if (command.permission == PermissionLevel.PLAYER){
+                c.clientError("You are not a player. Contact an admin to start")
+            } else {
+                c.error(
+                    "You used a command that needs level ${command.permission}. You only have permission level ${c.permissionLevel}",
+                    "Permission request denied")
+            }.then()
         }
     }
     val client = start(File("key.txt"))
-    commands(client){
-        command {
-            name = "ping"
-            desc = "Time a request to discord"
-            execute { c ->
-                c.sendMessage("Pinging")
-                    .flatMap { first ->
-                        first.edit {
-                            val time = -c.event.message.timestamp.toEpochMilli() + first.timestamp.toEpochMilli()
-                            it.setContent("Pong! Time:${time}ms")
-                        }
-                    }
-            }
-        }
-        command {
-            name = "perms"
-            desc = "Query your permission level"
-            execute { c ->
-                c.sendMessage(c.permissionLevel.toString())
-            }
-        }
-    }.subscribe()
-    client.login().block()
+    initAllCommands()
+    client.runCommands().and(client.login()).block()
+}
+
+fun initAllCommands() {
+    initSimpleCommands()
 }

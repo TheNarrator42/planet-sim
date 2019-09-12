@@ -8,9 +8,9 @@ class PermissionLevel private constructor(val name :String) {
             return 0
         return when {
             this == ANY -> -1
-            this == PLAYER && other == MASTER_ADMIN -> -1
+            this == PLAYER && other == ADMIN -> -1
             this == PLAYER -> 1
-            this == MASTER_ADMIN -> 1
+            this == ADMIN -> 1
             else -> error("fuck")
         }
     }
@@ -37,7 +37,7 @@ class PermissionLevel private constructor(val name :String) {
 
     companion object {
         val PLAYER = PermissionLevel("PLAYER")
-        val MASTER_ADMIN = PermissionLevel("MASTER_ADMIN")
+        val ADMIN = PermissionLevel("ADMIN")
         val ANY = PermissionLevel("ANY")
     }
 

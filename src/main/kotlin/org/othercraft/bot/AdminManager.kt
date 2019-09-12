@@ -6,13 +6,11 @@ import reactor.core.publisher.Mono
 
 @FunctionalInterface
 interface AdminManager{
-    fun isMasterAdmin(user : User): Mono<Boolean>
+    fun isMasterAdmin(user : User): Boolean
 }
 
-interface BadPermissionHandler{
+interface BadPermissionHandler {
     fun run(context: Context,command: Command):Mono<Void>
 }
 
-interface HelpCommand{
-    fun getFor(event : MessageCreateEvent):Command
-}
+abstract class HelpCommand :Command("prints this menu",PermissionLevel.ANY,listOf("help"),false)

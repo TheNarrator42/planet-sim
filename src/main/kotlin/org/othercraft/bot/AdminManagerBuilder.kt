@@ -23,8 +23,8 @@ class AdminManagerBuilder{
 
     internal fun build(): AdminManager {
         return object : AdminManager {
-            override fun isMasterAdmin(user: User): Mono<Boolean> {
-                return list.any { id -> user.id == id }.toMono()
+            override fun isMasterAdmin(user: User): Boolean {
+                return list.any { id -> user.id == id }
             }
         }
     }
