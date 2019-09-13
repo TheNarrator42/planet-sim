@@ -118,7 +118,7 @@ fun addRules(div: DIV,rules: RuleSet){
                 text("link")
                 onClick = """
                     let a = window.location.href.split('#')[0];
-                    let b = "" + a + "#children-${rules.id}"
+                    let b = "" + a + "#rules-${rules.id}"
                     navigator.clipboard.writeText(b);
                 """.trimIndent()
             }
@@ -127,6 +127,7 @@ fun addRules(div: DIV,rules: RuleSet){
             }
             text(rules.text)
         }
+        id = "rules-${rules.id}"
         if(rules.children.isNotEmpty() || rules.desc != null)
             div {
                 rules.desc?.let { i("float-left") { text(it) } }
