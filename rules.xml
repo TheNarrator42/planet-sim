@@ -1,7 +1,18 @@
-<r1 text="Overview">
-    <r1.1 t="This is a game about colonizing the stars, and eliminating your enemies. "/>
-    <r1.2 t="The way you win is by eliminating all of your enemies.">
-        <r1.2.1 t="The way another player is eliminated is when their home base planet is destroyed"/>
-        <r1.2.2 t="The last player standing wins"/>
-    </r1.2>
-</r1>
+<head>
+    <r1 text="Overview">
+        <r1.1 t="This is a game about colonizing the stars, and eliminating your enemies. "
+              desc="this is the description"/>
+        <r1.2 t="The way you win is by eliminating all of your enemies.">
+            <r1.2.1 t="The way another player is eliminated is when their home base planet is destroyed"/>
+            <r1.2.2 t="The last player standing wins"/>
+        </r1.2>
+    </r1>
+    <r2 text="Overview">
+        <r2.1 t="This is a game about colonizing the stars, and eliminating your enemies. "/>
+        <r2.2 t="The way you win is by eliminating all of your enemies.">
+            <r2.2.1 t="The way another player is eliminated is when their home base planet is destroyed"/>
+            <r2.2.2 t="The last player standing wins"/>
+        </r2.2>
+    </r2>
+
+</head>
