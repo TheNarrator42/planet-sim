@@ -15,5 +15,6 @@
     </r2>
     <r3 text="this is the text yay!" desc="this is the desc">
         <r3.1 text="this is rule 3.1"/>
+        <r3.2 text="hmmmm"/>
     </r3>
 </head>
